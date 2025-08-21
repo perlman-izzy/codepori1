@@ -40,10 +40,8 @@ except ImportError:
 
 # ---------------- CONFIG -----------------
 KEY_FILES = [
-    Path("/Users/williamwhite/myapikeys/old/apikeys"),
-    Path("/Users/williamwhite/myapikeys/old/apikeys2"),
-    Path("/Users/williamwhite/myapikeys/old/apikeys3"),
-    Path("/Users/williamwhite/myapikeys/old/apikeys4"),
+    Path(__file__).parent / "apikeys2",
+    Path(__file__).parent / "apikeys5",
 ]
 TOR_PORTS = [9050, 9052, 9054]
 TOR_CONTROL_PORTS = [p + 1 for p in TOR_PORTS]
@@ -166,6 +164,10 @@ def patch_cli_if_needed(root: Path):
         log.info("CLI already patched. ✔︎")
 
 def validate_key(key: str, session: requests.Session):
+    # For development/testing, skip actual validation if SKIP_KEY_VALIDATION is set
+    if os.getenv("SKIP_KEY_VALIDATION", "0") == "1":
+        return key
+    
     try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
         response = session.get(url, timeout=10)

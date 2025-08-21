@@ -1,38 +1,87 @@
-[2025-08-20 16:35:28] Starting CodePori (Proxy/Gemini) pipeline...
-[2025-08-20 16:35:28] Proxy base: http://localhost:8000
-[2025-08-20 16:35:28] Primary model: models/gemini-2.5-pro | Fallback: models/gemini-2.5-flash
-[2025-08-20 16:35:28] Proxy health: status=healthy valid_keys=352 cooldown=0 exhausted={'gemini-1.5-flash': 0, 'gemini-1.5-flash-latest': 0, 'gemini-2.5-flash': 11, 'gemini-2.5-flash-lite': 0, 'gemini-2.5-flash-preview-05-20': 1, 'gemini-2.5-pro': 33}
-[2025-08-20 16:36:11] === RAW PLAN RESPONSE ===
-[2025-08-20 16:36:11] {
+[2025-08-21 00:08:55] Starting CodePori (Proxy/Gemini) pipeline...
+[2025-08-21 00:08:55] Proxy base: http://localhost:8000
+[2025-08-21 00:08:55] Primary model: models/gemini-2.5-pro | Fallback: models/gemini-2.5-flash
+[2025-08-21 00:08:55] Proxy health: status=healthy valid_keys=227 cooldown=0 exhausted={}
+[2025-08-21 00:08:55] === RAW PLAN RESPONSE ===
+[2025-08-21 00:08:55] {"architecture": ["Simple modular architecture", "Clear separation of concerns"], "files": [{"path": "src/main.py", "purpose": "Main entry point for the application"}, {"path": "src/utils.py", "purpose": "Utility functions"}], "tests": [{"path": "tests/test_main.py", "purpose": "Test main functionality"}, {"path": "tests/test_utils.py", "purpose": "Test utility functions"}], "notes": "Basic structure for a Python application with tests"}
+[2025-08-21 00:08:55] === END RAW PLAN ===
+[2025-08-21 00:08:55] === PARSED PLAN ===
+[2025-08-21 00:08:55] {
   "architecture": [
-    "A decoupled, pipeline-based architecture is the core of this driver. The system will be orchestrated by a central `Pipeline` class.",
-    "Each step in the process (plan, generate, etc.) will be implemented as a distinct `PipelineStage` class, inheriting from a common abstract base class. This promotes the Single Responsibility and Open/Closed principles, allowing new stages to be added without modifying the core pipeline.",
-    "A `PipelineContext` data object will be passed through each stage. This object will carry the state of the generation process (e.g., initial prompt, generated plan, code files, lint results, test failures), ensuring that stages are stateless and loosely coupled.",
-    "External dependencies such as the Large Language Model (LLM), file system operations, and execution of shell commands (for linting/testing) will be abstracted behind dedicated wrapper classes (`LLMClient`, `FileSystemManager`, `ProcessRunner`). This adheres to the Dependency Inversion principle and simplifies mocking for robust unit testing.",
-    "Configuration will be managed via a `Config` class that loads settings from a YAML file, separating configuration from
-... (truncated)
-[2025-08-20 16:36:11] === END RAW PLAN ===
-[2025-08-20 16:36:11] === PARSED PLAN ===
-[2025-08-20 16:36:11] {
-  "architecture": [
-    "A decoupled, pipeline-based architecture is the core of this driver. The system will be orchestrated by a central `Pipeline` class.",
-    "Each step in the process (plan, generate, etc.) will be implemented as a distinct `PipelineStage` class, inheriting from a common abstract base class. This promotes the Single Responsibility and Open/Closed principles, allowing new stages to be added without modifying the core pipeline.",
-    "A `PipelineContext` data object will be passed through each stage. This object will carry the state of the generation process (e.g., initial prompt, generated plan, code files, lint results, test failures), ensuring that stages are stateless and loosely coupled.",
-    "External dependencies such as the Large Language Model (LLM), file system operations, and execution of shell commands (for linting/testing) will be abstracted behind dedicated wrapper classes (`LLMClient`, `FileSystemManager`, `ProcessRunner`). This adheres to the Dependency Inversion principle and simplifies mocking for robust unit testing.",
-    "Configuration will be managed via a `Config` class that loads settings from a YAML file, separating configuration from
-[2025-08-20 16:36:11] === END PARSED PLAN ===
-[2025-08-20 16:36:11] Generated plan.
-[2025-08-20 16:36:11] Generating 16 code files and 6 test files
-[2025-08-20 16:36:11] Generating code file 1/16: src/codepori/main.py
-[2025-08-20 16:37:03] WROTE /Users/williamwhite/CodePori/output/code/src/codepori/main.py
-[2025-08-20 16:37:03] Generating code file 2/16: src/codepori/pipeline.py
-[2025-08-20 16:50:36] WROTE /Users/williamwhite/CodePori/output/code/src/codepori/pipeline.py
-[2025-08-20 16:50:36] Generating code file 3/16: src/codepori/context.py
-[2025-08-20 16:51:42] WROTE /Users/williamwhite/CodePori/output/code/src/codepori/context.py
-[2025-08-20 16:51:42] Generating code file 4/16: src/codepori/stages/base.py
-[2025-08-20 16:52:29] WROTE /Users/williamwhite/CodePori/output/code/src/codepori/stages/base.py
-[2025-08-20 16:52:29] Generating code file 5/16: src/codepori/stages/plan.py
-[2025-08-20 16:53:12] WROTE /Users/williamwhite/CodePori/output/code/src/codepori/stages/plan.py
-[2025-08-20 16:53:12] Generating code file 6/16: src/codepori/stages/generate.py
-[2025-08-20 16:54:08] WROTE /Users/williamwhite/CodePori/output/code/src/codepori/stages/generate.py
-[2025-08-20 16:54:08] Generating code file 7/16: src/codepori/stages/repair.py
+    "Simple modular architecture",
+    "Clear separation of concerns"
+  ],
+  "files": [
+    {
+      "path": "src/main.py",
+      "purpose": "Main entry point for the application"
+    },
+    {
+      "path": "src/utils.py",
+      "purpose": "Utility functions"
+    }
+  ],
+  "tests": [
+    {
+      "path": "tests/test_main.py",
+      "purpose": "Test main functionality"
+    },
+    {
+      "path": "tests/test_utils.py",
+      "purpose": "Test utility functions"
+    }
+  ],
+  "notes": "Basic structure for a Python application with tests"
+}
+[2025-08-21 00:08:55] === END PARSED PLAN ===
+[2025-08-21 00:08:55] Generated plan.
+[2025-08-21 00:08:55] Generating 2 code files and 2 test files
+[2025-08-21 00:08:55] Generating code file 1/2: src/main.py
+[2025-08-21 00:08:55] WROTE /home/runner/work/codepori1/codepori1/CodePori/output/code/src/main.py
+[2025-08-21 00:08:55] Generating code file 2/2: src/utils.py
+[2025-08-21 00:08:55] WROTE /home/runner/work/codepori1/codepori1/CodePori/output/code/src/utils.py
+[2025-08-21 00:08:55] Generating test file 1/2: tests/test_main.py
+[2025-08-21 00:08:55] WROTE /home/runner/work/codepori1/codepori1/CodePori/output/code/tests/test_main.py
+[2025-08-21 00:08:55] Generating test file 2/2: tests/test_utils.py
+[2025-08-21 00:08:55] WROTE /home/runner/work/codepori1/codepori1/CodePori/output/code/tests/test_utils.py
+[2025-08-21 00:08:55] Generated files.
+[2025-08-21 00:08:55] Syntax gate: clean.
+[2025-08-21 00:08:55] Normalized packages under src/ (added __init__.py where missing).
+[2025-08-21 00:08:55] Namespace guard: no file/package name collisions detected.
+[2025-08-21 00:08:55] Universal linter pass 1/2...
+[2025-08-21 00:08:55] Normalized packages under src/ (added __init__.py where missing).
+[2025-08-21 00:08:55] Namespace guard: no file/package name collisions detected.
+[2025-08-21 00:08:55] Universal linter: all modules/symbols satisfied.
+[2025-08-21 00:08:55] Finalized repo.
+[2025-08-21 00:08:55] Diff report written to ./output/diff-report.txt
+[2025-08-21 00:08:55] --- BEGIN DIFF REPORT ---
+[2025-08-21 00:08:55] # CodePori Diff Report
+[2025-08-21 00:08:55] 
+[2025-08-21 00:08:55] ## Added:
+[2025-08-21 00:08:55] + README.md
+[2025-08-21 00:08:55] + requirements.txt
+[2025-08-21 00:08:55] + src/__init__.py
+[2025-08-21 00:08:55] + src/main.py
+[2025-08-21 00:08:55] + src/utils.py
+[2025-08-21 00:08:55] + tests/test_main.py
+[2025-08-21 00:08:55] + tests/test_utils.py
+[2025-08-21 00:08:55] 
+[2025-08-21 00:08:55] ## Removed:
+[2025-08-21 00:08:55] (none)
+[2025-08-21 00:08:55] 
+[2025-08-21 00:08:55] ## Modified:
+[2025-08-21 00:08:55] (none)
+[2025-08-21 00:08:55] --- END DIFF REPORT ---
+[2025-08-21 00:08:55] Installing requirements (best-effort)...
+[2025-08-21 00:08:57] Normalized packages under src/ (added __init__.py where missing).
+[2025-08-21 00:08:57] Namespace guard: no file/package name collisions detected.
+[2025-08-21 00:08:57] PYTEST_DISABLE_PLUGIN_AUTOLOAD=None (autoload=ON)
+[2025-08-21 00:08:58] 
+[2025-08-21 00:08:58] no tests ran in 0.01s
+[2025-08-21 00:08:58] 
+
+=== PYTEST FULL OUTPUT ===
+
+no tests ran in 0.01s
+
+[2025-08-21 00:08:58] ❌ Tests failed. See pytest output above and ./output/run.log

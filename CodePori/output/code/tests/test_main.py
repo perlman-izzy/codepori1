@@ -1,6 +1,8 @@
-# Generated code file
-def main():
-    print('Hello, World!')
+import pytest
+from src.main import main
 
-if __name__ == '__main__':
+def test_main():
+    """Test main function"""
+    # This should not raise any exceptions
     main()
+    assert True

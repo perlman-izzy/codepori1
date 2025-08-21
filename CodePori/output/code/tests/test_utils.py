@@ -1,6 +1,7 @@
-# Generated code file
-def main():
-    print('Hello, World!')
+import pytest
+from src.utils import helper_function
 
-if __name__ == '__main__':
-    main()
+def test_helper_function():
+    """Test helper function"""
+    result = helper_function()
+    assert result is not None

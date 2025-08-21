@@ -1,1 +1,1 @@
-{"language": "python", "code": "# Generated code file\ndef main():\n    print('Hello, World!')\n\nif __name__ == '__main__':\n    main()\n"}
+{"language": "python", "code": "#!/usr/bin/env python3\n\ndef main():\n    \"\"\"Main function\"\"\"\n    print('Hello from generated main!')\n    return True\n\nif __name__ == '__main__':\n    main()\n"}

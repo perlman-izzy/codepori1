@@ -1,0 +1,1 @@
+{"language": "python", "code": "import pytest\nfrom src.main import main\n\ndef test_main():\n    \"\"\"Test main function\"\"\"\n    # This should not raise any exceptions\n    main()\n    assert True\n"}

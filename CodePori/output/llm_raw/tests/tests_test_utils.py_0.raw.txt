@@ -1,0 +1,1 @@
+{"language": "python", "code": "import pytest\nfrom src.utils import helper_function\n\ndef test_helper_function():\n    \"\"\"Test helper function\"\"\"\n    result = helper_function()\n    assert result is not None\n"}

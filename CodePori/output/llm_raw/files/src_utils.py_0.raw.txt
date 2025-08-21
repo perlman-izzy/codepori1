@@ -1,0 +1,1 @@
+{"language": "python", "code": "#!/usr/bin/env python3\n\ndef helper_function():\n    \"\"\"A helper function\"\"\"\n    return \"Helper function result\"\n\ndef another_helper(value):\n    \"\"\"Another helper function\"\"\"\n    return value * 2\n"}

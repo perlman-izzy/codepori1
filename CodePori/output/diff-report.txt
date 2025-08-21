@@ -1,0 +1,19 @@
+# CodePori Diff Report
+
+## Added:
++ README.md
++ requirements.txt
++ src/__init__.py
++ src/__pycache__/__init__.cpython-312.pyc
++ src/__pycache__/main.cpython-312.pyc
++ src/__pycache__/utils.cpython-312.pyc
++ src/main.py
++ src/utils.py
++ tests/test_main.py
++ tests/test_utils.py
+
+## Removed:
+(none)
+
+## Modified:
+(none)

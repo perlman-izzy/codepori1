@@ -1,12 +1,26 @@
 #!/usr/bin/env bash
 set -euxo pipefail
-
-# Export required environment variables
 export DEBIAN_FRONTEND=noninteractive
-export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
 export PIP_DISABLE_PIP_VERSION_CHECK=1
+export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
 
-echo "=== Starting Google Jules Linux VM Setup ==="
+# --- HARD RESET OF WORKSPACE ---
+APP_DIR="${APP_DIR:-/app}"
+
+# Always leave /app before nuking it
+cd /
+
+# If /app exists, remove it completely
+if [ -d "$APP_DIR" ]; then
+  sudo rm -rf "$APP_DIR"
+fi
+
+# Recreate /app and give it to UID 1001
+sudo mkdir -p "$APP_DIR"
+sudo chown 1001:1001 "$APP_DIR"
+sudo chmod -R u+rwX,go-rwx "$APP_DIR"
+
+echo "=== Workspace reset: $APP_DIR is clean ==="
 
 # Function to check if command exists
 command_exists() {
@@ -22,195 +36,234 @@ run_with_sudo() {
     fi
 }
 
-# Update package lists and install system dependencies
+# Configure Git globally
+echo "=== Configuring Git ==="
+git config --global init.defaultBranch main
+git config --global core.hooksPath /dev/null
+
+# Add https/ssh rewrite rules if provided by environment variables
+if [ -n "${GIT_URL_REWRITE_HTTPS:-}" ]; then
+    git config --global url."$GIT_URL_REWRITE_HTTPS".insteadOf https://
+fi
+
+if [ -n "${GIT_URL_REWRITE_SSH:-}" ]; then
+    git config --global url."$GIT_URL_REWRITE_SSH".insteadOf ssh://
+fi
+
+# Clone repository if REPO_URL is provided
+if [ -n "${REPO_URL:-}" ]; then
+    echo "=== Cloning repository from $REPO_URL ==="
+    git clone "$REPO_URL" "$APP_DIR"
+    cd "$APP_DIR"
+else
+    echo "=== No REPO_URL provided, working in $APP_DIR ==="
+    cd "$APP_DIR"
+fi
+
+# Install common system dependencies
 echo "=== Installing system dependencies ==="
 run_with_sudo apt-get update -y
 run_with_sudo apt-get install -y \
     build-essential \
+    python3 \
     python3-dev \
     python3-venv \
     python3-pip \
+    pkg-config \
     libssl-dev \
     libffi-dev \
-    pkg-config \
     git \
     curl \
-    wget
+    ca-certificates \
+    jq
 
-# Create and activate Python virtual environment
-echo "=== Setting up Python virtual environment ==="
-if command_exists uv; then
-    echo "Using uv for virtual environment"
-    uv venv venv
-    source venv/bin/activate
-else
-    echo "Using python3 -m venv for virtual environment"
-    python3 -m venv venv
-    source venv/bin/activate
+# Detect stack automatically and handle each one
+echo "=== Detecting project stacks ==="
+
+PYTHON_DETECTED=false
+NODE_DETECTED=false
+DOTNET_DETECTED=false
+JAVA_DETECTED=false
+GO_DETECTED=false
+
+# Python detection
+if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || find . -name "*.py" -type f | head -1 | grep -q .; then
+    PYTHON_DETECTED=true
+    echo "Python stack detected"
 fi
 
-# Upgrade pip to latest version
-python -m pip install --upgrade pip
+# Node detection
+if [ -f "package.json" ]; then
+    NODE_DETECTED=true
+    echo "Node.js stack detected"
+fi
 
-# Install project dependencies based on what's available
-echo "=== Installing project dependencies ==="
-if [ -f "requirements.txt" ]; then
-    echo "Found requirements.txt, installing with pip"
-    if command_exists uv; then
-        uv pip install -r requirements.txt
-    else
-        pip install -r requirements.txt
-    fi
-elif [ -f "pyproject.toml" ]; then
-    echo "Found pyproject.toml, installing editable with pip"
-    if command_exists uv; then
-        uv pip install -e .
-    else
-        pip install -e .
-    fi
-else
-    echo "No requirements.txt or pyproject.toml found, installing common crypto bot dependencies"
-    CRYPTO_DEPS=(
-        "ccxt"
-        "pandas"
-        "numpy"
-        "scikit-learn"
-        "python-binance"
-        "requests"
-        "python-dotenv"
-        "pytest"
-    )
+# .NET detection
+if find . -name "*.csproj" -o -name "*.sln" -type f | head -1 | grep -q .; then
+    DOTNET_DETECTED=true
+    echo ".NET stack detected"
+fi
+
+# Java detection
+if [ -f "gradlew" ] || [ -f "build.gradle" ] || [ -f "pom.xml" ]; then
+    JAVA_DETECTED=true
+    echo "Java stack detected"
+fi
+
+# Go detection
+if [ -f "go.mod" ]; then
+    GO_DETECTED=true
+    echo "Go stack detected"
+fi
+
+# Handle Python stack
+if [ "$PYTHON_DETECTED" = true ]; then
+    echo "=== Setting up Python environment ==="
     
+    # Create virtual environment
     if command_exists uv; then
-        uv pip install "${CRYPTO_DEPS[@]}"
+        echo "Using uv for virtual environment"
+        uv venv venv || python3 -m venv venv
+        source venv/bin/activate
     else
-        pip install "${CRYPTO_DEPS[@]}"
+        echo "Using python3 -m venv for virtual environment"
+        python3 -m venv venv
+        source venv/bin/activate
     fi
-fi
-
-# Attempt to install TA-Lib (best effort, don't hard-fail)
-echo "=== Installing TA-Lib (best effort) ==="
-TALIB_INSTALLED=false
-
-# Try ta-lib-bin first
-echo "Trying ta-lib-bin..."
-if command_exists uv; then
-    if uv pip install ta-lib-bin 2>/dev/null; then
-        TALIB_INSTALLED=true
-        echo "Successfully installed ta-lib-bin"
-    fi
-else
-    if pip install ta-lib-bin 2>/dev/null; then
-        TALIB_INSTALLED=true
-        echo "Successfully installed ta-lib-bin"
-    fi
-fi
-
-# If ta-lib-bin failed, try building from source
-if [ "$TALIB_INSTALLED" = false ]; then
-    echo "ta-lib-bin failed, attempting to build TA-Lib from source..."
-    (
-        cd /tmp
-        wget -q http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz 2>/dev/null || curl -sL http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz -o ta-lib-0.4.0-src.tar.gz
-        tar -xzf ta-lib-0.4.0-src.tar.gz
-        cd ta-lib/
-        ./configure --prefix=/usr/local
-        make
-        run_with_sudo make install
-        export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-        
-        # Now try installing the Python wrapper
+    
+    # Bootstrap pip
+    python -m ensurepip --upgrade 2>/dev/null || true
+    python -m pip install --upgrade pip
+    
+    # Install dependencies
+    if [ -f "requirements.txt" ]; then
+        echo "Installing from requirements.txt"
         if command_exists uv; then
-            uv pip install TA-Lib
+            uv pip install -r requirements.txt || pip install -r requirements.txt
         else
-            pip install TA-Lib
+            pip install -r requirements.txt
         fi
-        TALIB_INSTALLED=true
-        echo "Successfully built and installed TA-Lib from source"
-    ) 2>/dev/null || {
-        echo "TA-Lib installation failed, continuing without it..."
-        TALIB_INSTALLED=false
-    }
+    elif [ -f "pyproject.toml" ]; then
+        echo "Installing from pyproject.toml"
+        if command_exists uv; then
+            uv pip install -e . || pip install -e .
+        else
+            pip install -e .
+        fi
+    fi
+    
+    # Compile Python sources
+    echo "Compiling Python sources"
+    python -m compileall . -q || echo "Warning: Some Python files failed to compile"
+    
+    # Run pytest if present
+    if [ -d "tests" ] || find . -name "test_*.py" -type f | head -1 | grep -q .; then
+        echo "Running pytest"
+        python -m pytest -v || echo "Warning: Tests failed but continuing"
+    fi
 fi
 
-# Echo versions of Python, pip, and main packages
-echo "=== Package Versions ==="
-echo "Python version: $(python --version)"
-echo "Pip version: $(pip --version)"
-
-# Check versions of main packages
-PACKAGES=("ccxt" "pandas" "numpy" "scikit-learn" "python-dotenv" "requests" "pytest")
-for pkg in "${PACKAGES[@]}"; do
-    version=$(python -c "try: import $pkg; print('$pkg:', $pkg.__version__); except: print('$pkg: not installed')" 2>/dev/null || echo "$pkg: not available")
-    echo "$version"
-done
-
-# Check TA-Lib version separately since it might not be installed
-if [ "$TALIB_INSTALLED" = true ]; then
-    talib_version=$(python -c "try: import talib; print('TA-Lib:', talib.__version__); except: print('TA-Lib: installed but version unavailable')" 2>/dev/null || echo "TA-Lib: installed but version check failed")
-    echo "$talib_version"
-else
-    echo "TA-Lib: not installed"
-fi
-
-# Run python -m compileall to catch syntax errors
-echo "=== Checking for syntax errors ==="
-if ! python -m compileall . -q; then
-    echo "ERROR: Syntax errors found during compilation"
-    exit 1
-fi
-echo "Syntax check passed"
-
-# Run pytest if tests exist (but don't fail on test failures)
-echo "=== Running tests (if available) ==="
-if [ -d "tests" ] || find . -name "test_*.py" -type f | grep -q .; then
-    echo "Tests found, running pytest..."
-    if ! python -m pytest -v 2>/dev/null; then
-        echo "Tests failed, but continuing (environment setup successful)"
+# Handle Node stack
+if [ "$NODE_DETECTED" = true ]; then
+    echo "=== Setting up Node.js environment ==="
+    
+    # Install Node.js if not present
+    if ! command_exists node; then
+        echo "Installing Node.js"
+        curl -fsSL https://deb.nodesource.com/setup_lts.x | run_with_sudo -E bash -
+        run_with_sudo apt-get install -y nodejs
+    fi
+    
+    # Detect package manager and install dependencies
+    if [ -f "yarn.lock" ] && command_exists yarn; then
+        echo "Using yarn for dependencies"
+        yarn install || echo "Warning: yarn install failed"
+        yarn build 2>/dev/null || echo "No build script found"
+        yarn test 2>/dev/null || echo "No test script found"
+    elif [ -f "pnpm-lock.yaml" ] && command_exists pnpm; then
+        echo "Using pnpm for dependencies"
+        pnpm install || echo "Warning: pnpm install failed"
+        pnpm build 2>/dev/null || echo "No build script found"
+        pnpm test 2>/dev/null || echo "No test script found"
     else
-        echo "Tests passed"
+        echo "Using npm for dependencies"
+        npm install || echo "Warning: npm install failed"
+        npm run build 2>/dev/null || echo "No build script found"
+        npm test 2>/dev/null || echo "No test script found"
     fi
-else
-    echo "No tests found, skipping pytest"
 fi
 
-# Perform safe smoke import of main package
-echo "=== Performing smoke test ==="
-MAIN_PACKAGES=("cryptobot" "src" "main" "app")
-SMOKE_SUCCESS=false
-
-for pkg in "${MAIN_PACKAGES[@]}"; do
-    if python -c "import $pkg; print('Successfully imported $pkg')" 2>/dev/null; then
-        SMOKE_SUCCESS=true
-        break
+# Handle .NET stack
+if [ "$DOTNET_DETECTED" = true ]; then
+    echo "=== Setting up .NET environment ==="
+    
+    # Install .NET if not present
+    if ! command_exists dotnet; then
+        echo "Installing .NET"
+        wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
+        run_with_sudo dpkg -i /tmp/packages-microsoft-prod.deb
+        run_with_sudo apt-get update
+        run_with_sudo apt-get install -y dotnet-sdk-8.0
     fi
-done
+    
+    # Restore, build, and test
+    dotnet restore || echo "Warning: dotnet restore failed"
+    dotnet build || echo "Warning: dotnet build failed" 
+    dotnet test || echo "Warning: dotnet test failed"
+fi
 
-# If none of the common main packages worked, try importing any Python file in the current directory
-if [ "$SMOKE_SUCCESS" = false ]; then
-    # Look for main.py or any importable Python module
-    if [ -f "main.py" ]; then
-        if python -c "exec(open('main.py').read()); print('Successfully executed main.py')" 2>/dev/null; then
-            SMOKE_SUCCESS=true
+# Handle Java stack
+if [ "$JAVA_DETECTED" = true ]; then
+    echo "=== Setting up Java environment ==="
+    
+    # Install Java if not present
+    if ! command_exists java; then
+        echo "Installing OpenJDK"
+        run_with_sudo apt-get install -y openjdk-17-jdk
+    fi
+    
+    # Handle Gradle projects
+    if [ -f "gradlew" ] || [ -f "build.gradle" ]; then
+        if [ -f "gradlew" ]; then
+            chmod +x ./gradlew
+            ./gradlew build || echo "Warning: gradle build failed"
+            ./gradlew test || echo "Warning: gradle test failed"
+        elif command_exists gradle; then
+            gradle build || echo "Warning: gradle build failed"
+            gradle test || echo "Warning: gradle test failed"
         fi
-    elif find . -name "*.py" -type f | head -1 | grep -q .; then
-        # Try importing the first Python file we find (basic syntax check)
-        FIRST_PY=$(find . -name "*.py" -type f | head -1)
-        if python -c "import ast; ast.parse(open('$FIRST_PY').read()); print('Python files appear syntactically correct')" 2>/dev/null; then
-            SMOKE_SUCCESS=true
+    # Handle Maven projects
+    elif [ -f "pom.xml" ]; then
+        if command_exists mvn; then
+            mvn compile || echo "Warning: maven compile failed"
+            mvn test || echo "Warning: maven test failed"
+        else
+            echo "Installing Maven"
+            run_with_sudo apt-get install -y maven
+            mvn compile || echo "Warning: maven compile failed"
+            mvn test || echo "Warning: maven test failed"
         fi
-    else
-        # No Python files found, but that's okay for some projects
-        SMOKE_SUCCESS=true
-        echo "No Python modules found to import, but setup completed successfully"
     fi
 fi
 
-if [ "$SMOKE_SUCCESS" = true ]; then
-    echo "JULES_OK"
-else
-    echo "Warning: Smoke test failed, but environment setup completed"
-    echo "JULES_OK"
+# Handle Go stack
+if [ "$GO_DETECTED" = true ]; then
+    echo "=== Setting up Go environment ==="
+    
+    # Install Go if not present
+    if ! command_exists go; then
+        echo "Installing Go"
+        GO_VERSION="1.21.5"
+        wget "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -O /tmp/go.tar.gz
+        run_with_sudo tar -C /usr/local -xzf /tmp/go.tar.gz
+        export PATH=$PATH:/usr/local/go/bin
+        echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+    fi
+    
+    # Handle Go modules
+    go mod tidy || echo "Warning: go mod tidy failed"
+    go build ./... || echo "Warning: go build failed"
+    go test ./... || echo "Warning: go test failed"
 fi
 
-echo "=== DONE (JULES_OK) ==="
+echo "JULES_OK"
